@@ -1,0 +1,49 @@
+name: Capture Webpages
+
+on:
+  schedule:
+    # Run the action every 30 minutes
+    - cron: '0,30 * * * *'
+
+jobs:
+  capture-webpages:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Step 2: Get the current IST time and format it
+    - name: Set IST Time
+      id: ist-time
+      run: |
+        ist_time=$(TZ=Asia/Kolkata date +'%Y-%m-%d_%H-%M-%S')
+        echo "::set-output name=ist_time::$ist_time"
+
+    # Step 3: Create the folders in the root directory (outside .github/workflows)
+    - name: Create root-level folders
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/daily-combine
+        mkdir -p $GITHUB_WORKSPACE/weekly-must-before-all-check
+
+    # Step 4: Capture Daily Combine webpage
+    - name: Capture Daily Combine Webpage
+      run: |
+        wget -O $GITHUB_WORKSPACE/daily-combine/daily_combine_${{ steps.ist-time.outputs.ist_time }}.html https://chartink.com/screener/daily-combine
+
+    # Step 5: Capture Weekly Must Before All Check webpage
+    - name: Capture Weekly Must Before All Check Webpage
+      run: |
+        wget -O $GITHUB_WORKSPACE/weekly-must-before-all-check/weekly_must_before_all_check_${{ steps.ist-time.outputs.ist_time }}.html https://chartink.com/screener/weekly-must-before-all-check
+
+    # Step 6: Commit and Push the captured webpages back to the repository
+    - name: Commit and Push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "Captured webpages at ${{ steps.ist-time.outputs.ist_time }} IST"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
