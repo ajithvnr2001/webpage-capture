@@ -2,35 +2,35 @@ name: Capture Webpages
 
 on:
   schedule:
-    # Run the action every 30 minutes
     - cron: '*/30 * * * *'
+  workflow_dispatch:  # Allows manual triggering
+  push:
+    branches: [ main ]  # Triggers on push to main branch
+
+permissions:
+  contents: write  # Explicitly set permissions to write to the repository
 
 jobs:
   capture-webpages:
     runs-on: ubuntu-latest
     steps:
-    # Step 1: Checkout the repository
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Step 2: Get the current IST time and format it
     - name: Set IST Time
       id: ist-time
       run: |
         ist_time=$(TZ=Asia/Kolkata date +'%Y-%m-%d_%H-%M-%S')
         echo "ist_time=$ist_time" >> $GITHUB_OUTPUT
 
-    # Step 3: Capture Daily Combine webpage
     - name: Capture Daily Combine Webpage
       run: |
         wget -O "daily_combine_${{ steps.ist-time.outputs.ist_time }}.html" https://chartink.com/screener/daily-combine
 
-    # Step 4: Capture Weekly Must Before All Check webpage
     - name: Capture Weekly Must Before All Check Webpage
       run: |
         wget -O "weekly_must_before_all_check_${{ steps.ist-time.outputs.ist_time }}.html" https://chartink.com/screener/weekly-must-before-all-check
 
-    # Step 5: Commit and Push the captured webpages back to the repository
     - name: Commit and Push
       run: |
         git config --local user.email "action@github.com"
@@ -38,5 +38,10 @@ jobs:
         git add .
         git commit -m "Captured webpages at ${{ steps.ist-time.outputs.ist_time }} IST"
         git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Output Action Status
+      run: |
+        echo "Action completed successfully"
+        echo "Current UTC time: $(date -u)"
+        echo "Files created:"
+        ls -l *.html
