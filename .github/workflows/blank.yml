@@ -1,21 +1,31 @@
-name: Capture Webpages
+name: Capture Webpage Screenshots
 
 on:
   schedule:
     - cron: '*/30 * * * *'
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:
   push:
-    branches: [ main ]  # Triggers on push to main branch
+    branches: [ main ]
 
 permissions:
-  contents: write  # Explicitly set permissions to write to the repository
+  contents: write
 
 jobs:
-  capture-webpages:
+  capture-screenshots:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14'
+
+    - name: Install dependencies
+      run: |
+        npm init -y
+        npm install puppeteer
 
     - name: Set IST Time
       id: ist-time
@@ -23,20 +33,36 @@ jobs:
         ist_time=$(TZ=Asia/Kolkata date +'%Y-%m-%d_%H-%M-%S')
         echo "ist_time=$ist_time" >> $GITHUB_OUTPUT
 
-    - name: Capture Daily Combine Webpage
+    - name: Capture Screenshots
       run: |
-        wget -O "daily_combine_${{ steps.ist-time.outputs.ist_time }}.html" https://chartink.com/screener/daily-combine
+        node << EOF
+        const puppeteer = require('puppeteer');
+        const fs = require('fs');
 
-    - name: Capture Weekly Must Before All Check Webpage
-      run: |
-        wget -O "weekly_must_before_all_check_${{ steps.ist-time.outputs.ist_time }}.html" https://chartink.com/screener/weekly-must-before-all-check
+        async function captureScreenshot(url, filename) {
+          const browser = await puppeteer.launch();
+          const page = await browser.newPage();
+          await page.setViewport({ width: 1920, height: 1080 });
+          await page.goto(url, { waitUntil: 'networkidle0' });
+          await page.screenshot({ path: filename, fullPage: true });
+          await browser.close();
+        }
+
+        (async () => {
+          const timestamp = process.env.IST_TIME;
+          await captureScreenshot('https://chartink.com/screener/daily-combine', `daily_combine_${timestamp}.png`);
+          await captureScreenshot('https://chartink.com/screener/weekly-must-before-all-check', `weekly_must_before_all_check_${timestamp}.png`);
+        })();
+        EOF
+      env:
+        IST_TIME: ${{ steps.ist-time.outputs.ist_time }}
 
     - name: Commit and Push
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add .
-        git commit -m "Captured webpages at ${{ steps.ist-time.outputs.ist_time }} IST"
+        git add *.png
+        git commit -m "Captured screenshots at ${{ steps.ist-time.outputs.ist_time }} IST"
         git push
 
     - name: Output Action Status
@@ -44,4 +70,4 @@ jobs:
         echo "Action completed successfully"
         echo "Current UTC time: $(date -u)"
         echo "Files created:"
-        ls -l *.html
+        ls -l *.png
