@@ -20,12 +20,12 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '14'
+        node-version: '16'  # Using a more recent Node.js version
 
     - name: Install dependencies
       run: |
         npm init -y
-        npm install puppeteer
+        npm install puppeteer@13.0.0  # Specifying an older version for compatibility
 
     - name: Set IST Time
       id: ist-time
@@ -37,15 +37,23 @@ jobs:
       run: |
         node << EOF
         const puppeteer = require('puppeteer');
-        const fs = require('fs');
 
         async function captureScreenshot(url, filename) {
-          const browser = await puppeteer.launch();
-          const page = await browser.newPage();
-          await page.setViewport({ width: 1920, height: 1080 });
-          await page.goto(url, { waitUntil: 'networkidle0' });
-          await page.screenshot({ path: filename, fullPage: true });
-          await browser.close();
+          let browser;
+          try {
+            browser = await puppeteer.launch({
+              args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+            const page = await browser.newPage();
+            await page.setViewport({ width: 1920, height: 1080 });
+            await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+            await page.screenshot({ path: filename, fullPage: true });
+            console.log(`Screenshot captured: ${filename}`);
+          } catch (error) {
+            console.error(`Error capturing screenshot for ${url}:`, error);
+          } finally {
+            if (browser) await browser.close();
+          }
         }
 
         (async () => {
@@ -62,12 +70,12 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add *.png
-        git commit -m "Captured screenshots at ${{ steps.ist-time.outputs.ist_time }} IST"
-        git push
+        git commit -m "Captured screenshots at ${{ steps.ist-time.outputs.ist_time }} IST" || echo "No changes to commit"
+        git push || echo "No changes to push"
 
     - name: Output Action Status
       run: |
-        echo "Action completed successfully"
+        echo "Action completed"
         echo "Current UTC time: $(date -u)"
         echo "Files created:"
-        ls -l *.png
+        ls -l *.png || echo "No PNG files found"
