@@ -3,12 +3,11 @@ name: Capture Webpages
 on:
   schedule:
     # Run the action every 30 minutes
-    - cron: '0,30 * * * *'
+    - cron: '*/30 * * * *'
 
 jobs:
   capture-webpages:
     runs-on: ubuntu-latest
-
     steps:
     # Step 1: Checkout the repository
     - name: Checkout repository
@@ -19,17 +18,17 @@ jobs:
       id: ist-time
       run: |
         ist_time=$(TZ=Asia/Kolkata date +'%Y-%m-%d_%H-%M-%S')
-        echo "::set-output name=ist_time::$ist_time"
+        echo "ist_time=$ist_time" >> $GITHUB_OUTPUT
 
-    # Step 3: Capture Daily Combine webpage and save it directly in the repository root
+    # Step 3: Capture Daily Combine webpage
     - name: Capture Daily Combine Webpage
       run: |
-        wget -O daily_combine_${{ steps.ist-time.outputs.ist_time }}.html https://chartink.com/screener/daily-combine
+        wget -O "daily_combine_${{ steps.ist-time.outputs.ist_time }}.html" https://chartink.com/screener/daily-combine
 
-    # Step 4: Capture Weekly Must Before All Check webpage and save it directly in the repository root
+    # Step 4: Capture Weekly Must Before All Check webpage
     - name: Capture Weekly Must Before All Check Webpage
       run: |
-        wget -O weekly_must_before_all_check_${{ steps.ist-time.outputs.ist_time }}.html https://chartink.com/screener/weekly-must-before-all-check
+        wget -O "weekly_must_before_all_check_${{ steps.ist-time.outputs.ist_time }}.html" https://chartink.com/screener/weekly-must-before-all-check
 
     # Step 5: Commit and Push the captured webpages back to the repository
     - name: Commit and Push
