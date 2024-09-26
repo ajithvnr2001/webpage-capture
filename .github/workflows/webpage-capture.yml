@@ -2,7 +2,7 @@ name: Capture Webpages
 
 on:
   schedule:
-    # Run the action every 30 minutes
+    # Run the action every 30 minute
     - cron: '0,30 * * * *'
 
 jobs:
